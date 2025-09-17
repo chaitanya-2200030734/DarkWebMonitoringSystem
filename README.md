@@ -1,5 +1,7 @@
 # Dark Web Monitoring & Threat Analysis Dashboard
 
+## This is for Educational purposes only!!
+
 ## Overview
 
 This project is a modern, AI-powered dashboard for dark web monitoring and forensic threat analysis. It enables users to upload data packages (CSV, TXT, JSON), review file summaries, and perform advanced risk analysis using OSINT and real-world threat intelligence integrations.
