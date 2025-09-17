@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import HomePage from './components/HomePage';
 import Dashboard from './components/Dashboard';
 import { AnalysisResult } from './types/analysis';
@@ -217,6 +218,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-black">
+      <Analytics />
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
