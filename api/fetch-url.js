@@ -63,8 +63,8 @@ app.post('/api/analyze-url', async (req, res) => {
     }
   };
 
-  // Railway free tier has 10-second HTTP timeout - we must respond within 6 seconds
-  const RAILWAY_TIMEOUT = 6000; // 6 seconds (4 second buffer for safety)
+  // Railway free tier has 10-second HTTP timeout - we must respond within 9 seconds
+  const RAILWAY_TIMEOUT = 9000; // 9 seconds (1 second buffer for safety)
   res.setTimeout(RAILWAY_TIMEOUT);
   
   // Send headers immediately to keep connection alive
@@ -104,7 +104,7 @@ app.post('/api/analyze-url', async (req, res) => {
       setTimeout(() => {
         console.error(`[${requestId}] Railway timeout reached (${RAILWAY_TIMEOUT}ms)`);
         reject(new Error('RAILWAY_TIMEOUT'));
-      }, RAILWAY_TIMEOUT - 1000) // 1 second buffer before Railway kills it
+      }, RAILWAY_TIMEOUT - 500) // 500ms buffer before Railway kills it
     );
     
     try {
