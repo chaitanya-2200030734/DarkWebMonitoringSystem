@@ -192,8 +192,15 @@ app.post('/api/fetch-url', async (req, res) => {
   }
 });
 
-// New secure URL analysis endpoint
-app.post('/api/analyze-url', analyzeUrlEndpoint);
+// New secure URL analysis endpoint (wrap in async handler to catch all errors)
+app.post('/api/analyze-url', async (req, res, next) => {
+  try {
+    await analyzeUrlEndpoint(req, res);
+  } catch (error) {
+    console.error('[fetch-url] Unhandled error in analyzeUrlEndpoint:', error);
+    next(error);
+  }
+});
 
 // Error handling middleware - must be last
 app.use((err, req, res, next) => {
