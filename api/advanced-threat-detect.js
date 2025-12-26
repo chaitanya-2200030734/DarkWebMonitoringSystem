@@ -367,30 +367,40 @@ function detectDarkWebThreats(text, links, scripts, isOnion) {
 }
 
 export async function detectWebThreat(url) {
-  const start = Date.now();
-  const fetchResult = await fetchPageContent(url);
-  
-  // Handle errors from fetch - check if result has error property
-  if (fetchResult && fetchResult.error) {
-    return { 
-      error: fetchResult.error,
-      isOnion: fetchResult.isOnion || isOnionUrl(url)
-    };
-  }
-  
-  // Check if we got valid HTML content
-  if (!fetchResult || !fetchResult.html || typeof fetchResult.html !== 'string') {
-    return { 
-      error: 'Failed to fetch page content.',
-      isOnion: (fetchResult && fetchResult.isOnion) || isOnionUrl(url)
-    };
-  }
-  
-  const html = fetchResult.html;
-  const isOnion = fetchResult.isOnion || isOnionUrl(url);
-  const contentHash = fetchResult.hash; // Store hash, never expose raw HTML
-  
-  const elements = extractPageElements(html, url);
+  try {
+    const start = Date.now();
+    const fetchResult = await fetchPageContent(url);
+    
+    // Handle errors from fetch - check if result has error property
+    if (fetchResult && fetchResult.error) {
+      return { 
+        error: fetchResult.error,
+        isOnion: fetchResult.isOnion || isOnionUrl(url)
+      };
+    }
+    
+    // Check if we got valid HTML content
+    if (!fetchResult || !fetchResult.html || typeof fetchResult.html !== 'string') {
+      return { 
+        error: 'Failed to fetch page content.',
+        isOnion: (fetchResult && fetchResult.isOnion) || isOnionUrl(url)
+      };
+    }
+    
+    const html = fetchResult.html;
+    const isOnion = fetchResult.isOnion || isOnionUrl(url);
+    const contentHash = fetchResult.hash; // Store hash, never expose raw HTML
+    
+    let elements;
+    try {
+      elements = extractPageElements(html, url);
+    } catch (parseError) {
+      console.error('[detectWebThreat] Error parsing HTML:', parseError);
+      return {
+        error: 'Failed to parse page content.',
+        isOnion: isOnion
+      };
+    }
   const cleanedText = cleanVisibleText(elements.visibleText);
   const threats = {
     phishing: false,
@@ -464,13 +474,22 @@ export async function detectWebThreat(url) {
     }
   }
   
-  // Summary (include hash but never raw HTML)
-  const summary = generateSummary(riskLevel, score, details, url, Date.now() - start);
-  summary.contentHash = contentHash; // Include hash for verification
-  summary.isOnion = isOnion;
-  summary.darkWebThreats = darkWebThreats;
-  
-  return summary;
+    // Summary (include hash but never raw HTML)
+    const summary = generateSummary(riskLevel, score, details, url, Date.now() - start);
+    summary.contentHash = contentHash; // Include hash for verification
+    summary.isOnion = isOnion;
+    summary.darkWebThreats = darkWebThreats;
+    
+    return summary;
+  } catch (error) {
+    console.error('[detectWebThreat] Unhandled error:', error);
+    console.error('[detectWebThreat] Error stack:', error.stack);
+    return {
+      error: 'An error occurred while analyzing the URL',
+      isOnion: isOnionUrl(url),
+      errorCode: error.message || 'ANALYSIS_ERROR'
+    };
+  }
 }
 
 // Example usage:
