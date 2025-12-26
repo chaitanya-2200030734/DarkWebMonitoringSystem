@@ -197,9 +197,23 @@ app.post('/api/fetch-url', async (req, res) => {
 
 // New secure URL analysis endpoint (wrap in async handler to catch all errors)
 app.post('/api/analyze-url', async (req, res, next) => {
+  // Set timeout to prevent hanging (5 minutes max)
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) {
+      console.error('[fetch-url] Request timeout after 5 minutes');
+      res.status(504).json({
+        error: 'Request timeout - analysis took too long',
+        errorCode: 'TIMEOUT',
+        actionable: 'Please try again with a different URL'
+      });
+    }
+  }, 300000); // 5 minutes
+
   try {
     await analyzeUrlEndpoint(req, res);
+    clearTimeout(timeout);
   } catch (error) {
+    clearTimeout(timeout);
     console.error('[fetch-url] Unhandled error in analyzeUrlEndpoint:', error);
     console.error('[fetch-url] Error stack:', error.stack);
     
