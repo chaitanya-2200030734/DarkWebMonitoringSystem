@@ -27,8 +27,8 @@ COPY . .
 # Build frontend
 RUN npm run build
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && \
+# Create non-root user (skip if already exists)
+RUN id -u appuser 2>/dev/null || useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 
 # Switch to non-root user
