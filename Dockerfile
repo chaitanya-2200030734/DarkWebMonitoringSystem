@@ -41,5 +41,5 @@ EXPOSE 3000 9050
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start Tor and application
-CMD ["sh", "-c", "tor & node server.js"]
+# Start Tor and application (wait for Tor to initialize)
+CMD ["sh", "-c", "tor & sleep 3 && NODE_ENV=production node server.js"]
