@@ -127,11 +127,12 @@ function generateKeyFindings(threats, riskLevel, score, categories) {
 }
 
 export async function analyzeUrlEndpoint(req, res) {
-  const { url } = req.body;
-  
-  if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url)) {
-    return res.status(400).json({ error: 'Invalid URL' });
-  }
+  try {
+    const { url } = req.body;
+    
+    if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url)) {
+      return res.status(400).json({ error: 'Invalid URL' });
+    }
 
   const phaseTimings = {
     crawlStart: Date.now(),
