@@ -25,7 +25,7 @@ RUN npm ci
 COPY . .
 
 # Build frontend (needs vite from devDependencies)
-RUN npm run build:prod
+RUN npm run build
 
 # Remove devDependencies to reduce image size (optional but recommended)
 RUN npm prune --production
