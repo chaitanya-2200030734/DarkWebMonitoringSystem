@@ -492,8 +492,78 @@ export async function detectWebThreat(url) {
   }
 }
 
-// Example usage:
-// (async () => {
-//   const result = await detectWebThreat('http://example.com');
-//   console.log(result);
-// })();
+// Helper functions for analyze-url.js
+export function categorizeThreats(findings, riskLevel, riskScore) {
+  const categories = {
+    phishing: false,
+    malware: false,
+    scam: false,
+    cybercrime: false,
+    suspicious: false
+  };
+  
+  const findingsStr = findings.join(' ').toLowerCase();
+  if (findingsStr.includes('phishing')) categories.phishing = true;
+  if (findingsStr.includes('malware')) categories.malware = true;
+  if (findingsStr.includes('scam')) categories.scam = true;
+  if (findingsStr.includes('cybercrime') || findingsStr.includes('illegal')) categories.cybercrime = true;
+  if (riskScore > 5) categories.suspicious = true;
+  
+  return categories;
+}
+
+export function getSafetyVerdict(riskLevel, riskScore, intent) {
+  if (riskLevel === 'Safe' && riskScore === 0) return 'SAFE';
+  if (riskLevel === 'Low' || riskScore < 10) return 'SUSPICIOUS';
+  if (riskLevel === 'Medium' || riskScore < 20) return 'HIGH_RISK';
+  return 'CRITICAL';
+}
+
+export function generateKeyFindings(findings, riskLevel, riskScore, threatCategories) {
+  const keyFindings = [];
+  
+  if (threatCategories.phishing) {
+    keyFindings.push('Phishing indicators detected - do not enter credentials');
+  }
+  if (threatCategories.malware) {
+    keyFindings.push('Malware indicators detected - avoid downloading files');
+  }
+  if (threatCategories.scam) {
+    keyFindings.push('Scam indicators detected - be cautious with financial transactions');
+  }
+  if (threatCategories.cybercrime) {
+    keyFindings.push('Cybercrime-related content detected');
+  }
+  if (riskScore > 15) {
+    keyFindings.push(`High risk score: ${riskScore}/100`);
+  }
+  
+  return keyFindings.length > 0 ? keyFindings : ['No major threats detected'];
+}
+
+export function generateRecommendations(riskLevel, threatCategories, safetyVerdict) {
+  const recommendations = [];
+  
+  if (safetyVerdict === 'CRITICAL' || safetyVerdict === 'HIGH_RISK') {
+    recommendations.push('Avoid visiting this site');
+    recommendations.push('Do not enter any personal information');
+    recommendations.push('Consider blocking this domain');
+  } else if (safetyVerdict === 'SUSPICIOUS') {
+    recommendations.push('Exercise caution when browsing');
+    recommendations.push('Avoid entering sensitive information');
+  } else {
+    recommendations.push('Site appears safe - standard precautions apply');
+  }
+  
+  if (threatCategories.phishing) {
+    recommendations.push('Never enter passwords or credentials');
+  }
+  if (threatCategories.malware) {
+    recommendations.push('Do not download files from this site');
+  }
+  
+  return recommendations;
+}
+
+// Re-export from tor-crawler.js
+export { getErrorMessage, isOnionUrl } from './tor-crawler.js';
