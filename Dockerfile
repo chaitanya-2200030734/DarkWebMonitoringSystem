@@ -27,12 +27,12 @@ COPY . .
 # Build frontend
 RUN npm run build
 
-# Create non-root user (let system assign UID to avoid conflicts)
-RUN useradd -m appuser || true && \
-    chown -R appuser:appuser /app || chown -R node:node /app
+# Use existing node user (already non-root, UID 1000)
+# No need to create new user - node user is perfect
+RUN chown -R node:node /app
 
-# Switch to non-root user (use appuser if created, otherwise node)
-USER appuser
+# Switch to non-root user
+USER node
 
 # Expose ports
 EXPOSE 3000 9050
