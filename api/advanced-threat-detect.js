@@ -44,6 +44,15 @@ async function fetchPageContent(url, timeout = 10000) {
       isOnion
     });
     
+    // Check if result has error (from tor-crawler error handling)
+    if (result.error || !result.html) {
+      return {
+        error: result.error || 'Failed to fetch page content',
+        isOnion: isOnion,
+        errorCode: result.errorCode || 'FETCH_FAILED'
+      };
+    }
+    
     // Hash the content for secure storage (never expose raw HTML)
     const contentHash = hashContent(result.html);
     
@@ -53,9 +62,9 @@ async function fetchPageContent(url, timeout = 10000) {
       hash: contentHash,
       isOnion,
       metadata: {
-        status: result.status,
-        finalUrl: result.url,
-        headers: result.headers
+        status: result.status || 200,
+        finalUrl: result.url || url,
+        headers: result.headers || {}
       }
     };
   } catch (error) {
