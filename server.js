@@ -19,11 +19,13 @@ if (NODE_ENV === 'production') {
   }));
   
   // Serve index.html for all routes (SPA routing) - must be last
-  app.get('*', (req, res, next) => {
+  // Express 5 compatible: use catch-all middleware instead of '*'
+  app.use((req, res, next) => {
     // Don't serve index.html for API routes
     if (req.path.startsWith('/api/')) {
       return next();
     }
+    // Serve index.html for all other routes (SPA routing)
     res.sendFile(join(__dirname, 'dist', 'index.html'));
   });
 }
