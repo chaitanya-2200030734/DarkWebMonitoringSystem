@@ -127,12 +127,11 @@ function generateKeyFindings(threats, riskLevel, score, categories) {
 }
 
 export async function analyzeUrlEndpoint(req, res) {
-  try {
-    const { url } = req.body;
-    
-    if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url)) {
-      return res.status(400).json({ error: 'Invalid URL' });
-    }
+  const { url } = req.body;
+  
+  if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url)) {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
 
   const phaseTimings = {
     crawlStart: Date.now(),
@@ -276,22 +275,25 @@ export async function analyzeUrlEndpoint(req, res) {
     });
 
   } catch (error) {
+    console.error('[analyzeUrlEndpoint] Unhandled error:', error);
+    console.error('[analyzeUrlEndpoint] Error stack:', error.stack);
+    
     const errorInfo = getErrorMessage(error);
-    const isOnion = isOnionUrl(url);
+    const isOnion = isOnionUrl(req.body?.url || '');
     
     res.status(500).json({ 
-      error: errorInfo.userMessage,
-      errorCode: error.message,
+      error: errorInfo.userMessage || 'An unexpected error occurred',
+      errorCode: error.message || 'UNKNOWN_ERROR',
       isOnion: isOnion,
-      actionable: errorInfo.actionable,
+      actionable: errorInfo.actionable || 'Please try again later',
       phaseTimings: {
-        crawlDuration: phaseTimings.crawlEnd ? phaseTimings.crawlEnd - phaseTimings.crawlStart : null,
-        analysisDuration: phaseTimings.analysisEnd ? phaseTimings.analysisEnd - phaseTimings.analysisStart : null,
+        crawlDuration: null,
+        analysisDuration: null,
         status: 'failed'
       },
       // Internal logging (not exposed to user in production)
       _internal: {
-        message: errorInfo.internalMessage,
+        message: errorInfo.internalMessage || error.toString(),
         timestamp: new Date().toISOString()
       }
     });
