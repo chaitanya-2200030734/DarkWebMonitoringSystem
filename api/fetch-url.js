@@ -63,8 +63,8 @@ app.post('/api/analyze-url', async (req, res) => {
     }
   };
 
-  // Set Railway-friendly timeout (30 seconds - Railway's typical limit)
-  const RAILWAY_TIMEOUT = 30000; // 30 seconds
+  // Railway free tier has 10-second HTTP timeout - we must respond within 8 seconds
+  const RAILWAY_TIMEOUT = 8000; // 8 seconds (2 second buffer for safety)
   res.setTimeout(RAILWAY_TIMEOUT);
   
   // Send headers immediately to keep connection alive
@@ -84,6 +84,18 @@ app.post('/api/analyze-url', async (req, res) => {
       return safeResponse(400, { error: 'Invalid URL format' });
     }
 
+    // Check if it's an onion URL - these are too slow for Railway free tier
+    const isOnion = url.includes('.onion');
+    if (isOnion) {
+      console.log(`[${requestId}] Onion URL detected - too slow for Railway free tier`);
+      return safeResponse(503, {
+        error: 'Dark web (.onion) URLs are too slow for Railway free tier (10-second limit)',
+        errorCode: 'ONION_TIMEOUT',
+        actionable: 'Please upgrade Railway plan or use a different hosting service for .onion URL analysis',
+        requestId: requestId
+      });
+    }
+
     console.log(`[${requestId}] Starting analysis for: ${url}`);
 
     // Execute analysis with Railway timeout protection
@@ -92,7 +104,7 @@ app.post('/api/analyze-url', async (req, res) => {
       setTimeout(() => {
         console.error(`[${requestId}] Railway timeout reached (${RAILWAY_TIMEOUT}ms)`);
         reject(new Error('RAILWAY_TIMEOUT'));
-      }, RAILWAY_TIMEOUT - 1000) // 1 second buffer before Railway kills it
+      }, RAILWAY_TIMEOUT - 500) // 500ms buffer before Railway kills it
     );
     
     try {
@@ -115,7 +127,7 @@ app.post('/api/analyze-url', async (req, res) => {
       
       if (!responded && !res.headersSent) {
         const errorMessage = analysisError.message === 'RAILWAY_TIMEOUT'
-          ? 'Analysis timed out - please try again with a simpler URL'
+          ? 'Analysis timed out - Railway free tier has 10-second HTTP limit. Please try a faster URL or upgrade your Railway plan.'
           : 'Failed to analyze URL';
         
         safeResponse(500, {

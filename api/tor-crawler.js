@@ -149,9 +149,9 @@ export function secureHash(data) {
 // Fetch page content with Tor support and retry logic
 export async function fetchPageContentSecure(url, options = {}) {
   const {
-    timeout = 10000,
-    retries = 3,
-    retryDelay = 2000,
+    timeout = 5000, // Reduced to 5 seconds for Railway free tier
+    retries = 1, // Only 1 retry to stay within Railway's 10-second limit
+    retryDelay = 500, // Fast retry
     isOnion = false
   } = options;
 
@@ -307,9 +307,11 @@ export async function fetchPageContentSecure(url, options = {}) {
     throw new Error('TOR_CONNECTION_FAILED');
   }
 
-  // For surface web URLs, use normal fetch
+  // For surface web URLs, use normal fetch with Railway-optimized timeout
+  // Railway free tier has 10-second limit, so we use 5 seconds max
+  const surfaceWebTimeout = Math.min(timeout, 5000); // Cap at 5 seconds for Railway
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const timeoutId = setTimeout(() => controller.abort(), surfaceWebTimeout);
   
   try {
     const response = await fetch(url, {

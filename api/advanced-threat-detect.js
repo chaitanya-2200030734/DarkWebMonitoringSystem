@@ -32,16 +32,17 @@ const THREAT_INTEL = {
   ]
 };
 
-async function fetchPageContent(url, timeout = 10000) {
+async function fetchPageContent(url, timeout = 5000) {
   try {
     const isOnion = isOnionUrl(url);
-    // tor-crawler.js handles timeouts internally (60s for onion, passed timeout for surface web)
-    // We just need to pass the isOnion flag - tor-crawler will use appropriate defaults
+    // Railway free tier has 10-second limit - we need to be FAST
+    // Surface web: 5 seconds max, 1 retry
+    // Onion: Not supported on Railway free tier (handled in fetch-url.js)
     const result = await fetchPageContentSecure(url, {
-      timeout: isOnion ? 60000 : timeout, // Extended timeout for onion services (handled internally)
-      retries: isOnion ? 5 : 2, // tor-crawler uses 5 retries for onion internally
-      retryDelay: isOnion ? 3000 : 1000,
-      isOnion
+      timeout: timeout, // 5 seconds for surface web
+      retries: 1, // Only 1 retry to stay within Railway's limit
+      retryDelay: 500, // Fast retry
+      isOnion: false // Force surface web only for Railway
     });
     
     // Check if result has error (from tor-crawler error handling)
@@ -411,12 +412,25 @@ export async function detectWebThreat(url) {
     high_risk_script: false,
     metadata_alert: false
   };
-  // Google Safe Browsing
-  const [gsbFlagged] = await checkGoogleSafeBrowsing(url);
-  if (gsbFlagged) threats.malware = true;
-  // PhishTank
-  const ptFlagged = await checkPhishtank(url);
-  if (ptFlagged) threats.phishing = true;
+  // Google Safe Browsing (with timeout for Railway)
+  try {
+    const gsbPromise = checkGoogleSafeBrowsing(url);
+    const gsbTimeout = new Promise((resolve) => setTimeout(() => resolve([false]), 2000));
+    const [gsbFlagged] = await Promise.race([gsbPromise, gsbTimeout]);
+    if (gsbFlagged) threats.malware = true;
+  } catch (e) {
+    // Skip if timeout or error
+  }
+  
+  // PhishTank (with timeout for Railway)
+  try {
+    const ptPromise = checkPhishtank(url);
+    const ptTimeout = new Promise((resolve) => setTimeout(() => resolve(false), 2000));
+    const ptFlagged = await Promise.race([ptPromise, ptTimeout]);
+    if (ptFlagged) threats.phishing = true;
+  } catch (e) {
+    // Skip if timeout or error
+  }
   // Suspicious scripts
   const suspiciousScriptsFound = detectSuspiciousScripts(elements.inlineScripts);
   if (suspiciousScriptsFound.length) threats.high_risk_script = true;
