@@ -17,13 +17,18 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci --only=production
+
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci
 
 # Copy application files
 COPY . .
 
-# Build frontend
+# Build frontend (needs vite from devDependencies)
 RUN npm run build:prod
+
+# Remove devDependencies to reduce image size (optional but recommended)
+RUN npm prune --production
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && \
