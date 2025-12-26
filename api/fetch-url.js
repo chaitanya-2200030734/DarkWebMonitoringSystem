@@ -7,13 +7,16 @@ import { analyzeUrlEndpoint } from './analyze-url.js';
 
 const app = express();
 
-// CORS configuration for production
+// CORS configuration - allow all origins by default
+// Set ALLOWED_ORIGINS env var to restrict if needed (comma-separated)
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.ALLOWED_ORIGINS?.split(',') || '*' 
-    : '*',
+  origin: process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : '*', // Allow all origins
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
