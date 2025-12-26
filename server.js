@@ -9,6 +9,16 @@ const __dirname = dirname(__filename);
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'production';
 
+// Process-level error handlers to catch unhandled errors
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Don't exit - let Railway handle it
+});
+
 // Serve static files from Vite build in production
 if (NODE_ENV === 'production') {
   // Serve static assets

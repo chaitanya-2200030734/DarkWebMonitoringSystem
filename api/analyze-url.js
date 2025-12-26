@@ -268,7 +268,7 @@ export async function analyzeUrlEndpoint(req, res) {
     };
 
     // Return sanitized response (NO raw HTML, DOM, or sensitive data)
-    res.json({
+    return res.json({
       url,
       safetyVerdict,
       riskScore,
