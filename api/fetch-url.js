@@ -32,17 +32,27 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Test endpoint to verify API is working
+app.get('/api/test', (req, res) => {
+  res.json({ status: 'ok', message: 'API is working', timestamp: new Date().toISOString() });
+});
+
 // URL analysis endpoint - simplified and bulletproof
 app.post('/api/analyze-url', async (req, res) => {
   // Set response timeout (Railway has limits)
   res.setTimeout(300000); // 5 minutes
   
-  // Ensure response is always sent
+  // Track if response was sent
   let responseSent = false;
+  
   const sendResponse = (status, data) => {
-    if (!responseSent) {
+    if (!responseSent && !res.headersSent) {
       responseSent = true;
-      res.status(status).json(data);
+      try {
+        res.status(status).json(data);
+      } catch (sendError) {
+        console.error('[sendResponse] Error sending response:', sendError);
+      }
     }
   };
 
@@ -58,16 +68,34 @@ app.post('/api/analyze-url', async (req, res) => {
       return sendResponse(400, { error: 'Invalid URL format' });
     }
 
-    // Call the analysis function
-    await analyzeUrlEndpoint(req, res);
+    // Wrap analyzeUrlEndpoint to ensure it always sends a response
+    try {
+      await analyzeUrlEndpoint(req, res);
+      // If analyzeUrlEndpoint didn't send response, send a default one
+      if (!res.headersSent && !responseSent) {
+        sendResponse(200, { 
+          error: 'Analysis completed but no response was sent',
+          url: url 
+        });
+      }
+    } catch (endpointError) {
+      console.error('[POST /api/analyze-url] Endpoint error:', endpointError);
+      if (!responseSent && !res.headersSent) {
+        sendResponse(500, {
+          error: 'An error occurred while analyzing the URL',
+          errorCode: endpointError.message || 'ENDPOINT_ERROR',
+          actionable: 'Please try again later'
+        });
+      }
+    }
     
   } catch (error) {
-    console.error('[POST /api/analyze-url] Error:', error);
+    console.error('[POST /api/analyze-url] Outer error:', error);
     console.error('[POST /api/analyze-url] Stack:', error.stack);
     
-    if (!responseSent) {
+    if (!responseSent && !res.headersSent) {
       sendResponse(500, {
-        error: 'An error occurred while analyzing the URL',
+        error: 'An unexpected error occurred',
         errorCode: error.message || 'UNKNOWN_ERROR',
         actionable: 'Please try again later'
       });
