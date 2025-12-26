@@ -195,4 +195,18 @@ app.post('/api/fetch-url', async (req, res) => {
 // New secure URL analysis endpoint
 app.post('/api/analyze-url', analyzeUrlEndpoint);
 
+// Error handling middleware - must be last
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal server error',
+    errorCode: err.code || 'INTERNAL_ERROR'
+  });
+});
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
+
 export default app;

@@ -18,17 +18,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies for build)
-RUN npm ci
+# Install ALL dependencies (needed for build)
+RUN npm install
 
 # Copy application files
 COPY . .
 
-# Build frontend (needs vite from devDependencies)
+# Build frontend
 RUN npm run build
-
-# Remove devDependencies to reduce image size (optional but recommended)
-RUN npm prune --production
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && \
@@ -46,4 +43,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start Tor and application
 CMD ["sh", "-c", "tor & node server.js"]
-
