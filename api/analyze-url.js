@@ -127,11 +127,13 @@ function generateKeyFindings(threats, riskLevel, score, categories) {
 }
 
 export async function analyzeUrlEndpoint(req, res) {
-  const { url } = req.body;
-  
-  if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url)) {
-    return res.status(400).json({ error: 'Invalid URL' });
-  }
+  // Ensure response is always sent - wrap everything in try-catch
+  try {
+    const { url } = req.body;
+    
+    if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url)) {
+      return res.status(400).json({ error: 'Invalid URL' });
+    }
 
   const phaseTimings = {
     crawlStart: Date.now(),
@@ -314,6 +316,16 @@ export async function analyzeUrlEndpoint(req, res) {
         timestamp: new Date().toISOString()
       }
     });
+  } catch (outerError) {
+    // Final safety net - ensure response is always sent
+    console.error('[analyzeUrlEndpoint] Outer catch error:', outerError);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: 'An unexpected error occurred',
+        errorCode: 'INTERNAL_ERROR',
+        actionable: 'Please try again later'
+      });
+    }
   }
 }
 
