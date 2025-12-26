@@ -1,5 +1,5 @@
 # Production Dockerfile for ThreatDetector
-FROM node:18-slim
+FROM node:20-slim
 
 # Install Tor daemon
 RUN apt-get update && \
