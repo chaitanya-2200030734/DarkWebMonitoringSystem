@@ -297,10 +297,15 @@ export async function analyzeUrlEndpoint(req, res) {
     console.error('[analyzeUrlEndpoint] Unhandled error:', error);
     console.error('[analyzeUrlEndpoint] Error stack:', error.stack);
     
+    // Ensure response is sent
+    if (res.headersSent) {
+      return; // Response already sent, don't try again
+    }
+    
     const errorInfo = getErrorMessage(error);
     const isOnion = isOnionUrl(req.body?.url || '');
     
-    res.status(500).json({ 
+    return res.status(500).json({ 
       error: errorInfo.userMessage || 'An unexpected error occurred',
       errorCode: error.message || 'UNKNOWN_ERROR',
       isOnion: isOnion,
@@ -316,16 +321,6 @@ export async function analyzeUrlEndpoint(req, res) {
         timestamp: new Date().toISOString()
       }
     });
-  } catch (outerError) {
-    // Final safety net - ensure response is always sent
-    console.error('[analyzeUrlEndpoint] Outer catch error:', outerError);
-    if (!res.headersSent) {
-      return res.status(500).json({
-        error: 'An unexpected error occurred',
-        errorCode: 'INTERNAL_ERROR',
-        actionable: 'Please try again later'
-      });
-    }
   }
 }
 
