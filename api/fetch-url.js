@@ -5,11 +5,10 @@ import { analyzeUrlEndpoint } from './analyze-url.js';
 const app = express();
 
 // CORS configuration - allow all origins by default
-// Set ALLOWED_ORIGINS env var to restrict if needed (comma-separated)
 const corsOptions = {
   origin: process.env.ALLOWED_ORIGINS 
     ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-    : '*', // Allow all origins
+    : '*',
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -32,71 +31,76 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Test endpoint to verify API is working
+// Test endpoint
 app.get('/api/test', (req, res) => {
   res.json({ status: 'ok', message: 'API is working', timestamp: new Date().toISOString() });
 });
 
-// URL analysis endpoint - simplified and bulletproof
+// URL analysis endpoint - bulletproof error handling
 app.post('/api/analyze-url', async (req, res) => {
-  // Set response timeout (Railway has limits)
-  res.setTimeout(300000); // 5 minutes
+  // Set timeout
+  res.setTimeout(300000);
   
-  // Track if response was sent
-  let responseSent = false;
+  // Track response status
+  let responded = false;
   
-  const sendResponse = (status, data) => {
-    if (!responseSent && !res.headersSent) {
-      responseSent = true;
+  const safeResponse = (status, data) => {
+    if (!responded && !res.headersSent) {
+      responded = true;
       try {
         res.status(status).json(data);
-      } catch (sendError) {
-        console.error('[sendResponse] Error sending response:', sendError);
+      } catch (err) {
+        console.error('[safeResponse] Failed to send:', err);
       }
     }
   };
 
   try {
-    // Validate request
-    if (!req.body || !req.body.url) {
-      return sendResponse(400, { error: 'URL is required' });
+    // Validate input
+    if (!req.body?.url) {
+      return safeResponse(400, { error: 'URL is required' });
     }
 
-    const { url } = req.body;
-    
-    if (typeof url !== 'string' || !/^https?:\/\//.test(url)) {
-      return sendResponse(400, { error: 'Invalid URL format' });
+    const url = String(req.body.url).trim();
+    if (!/^https?:\/\//.test(url)) {
+      return safeResponse(400, { error: 'Invalid URL format' });
     }
 
-    // Wrap analyzeUrlEndpoint to ensure it always sends a response
+    // Execute analysis with timeout
     try {
-      await analyzeUrlEndpoint(req, res);
-      // If analyzeUrlEndpoint didn't send response, send a default one
-      if (!res.headersSent && !responseSent) {
-        sendResponse(200, { 
-          error: 'Analysis completed but no response was sent',
+      await Promise.race([
+        analyzeUrlEndpoint(req, res),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('TIMEOUT')), 300000)
+        )
+      ]);
+      
+      // Check if response was sent
+      if (!res.headersSent && !responded) {
+        safeResponse(200, { 
+          message: 'Analysis completed',
           url: url 
         });
       }
-    } catch (endpointError) {
-      console.error('[POST /api/analyze-url] Endpoint error:', endpointError);
-      if (!responseSent && !res.headersSent) {
-        sendResponse(500, {
-          error: 'An error occurred while analyzing the URL',
-          errorCode: endpointError.message || 'ENDPOINT_ERROR',
-          actionable: 'Please try again later'
+    } catch (analysisError) {
+      console.error('[POST /api/analyze-url] Analysis error:', analysisError);
+      if (!responded && !res.headersSent) {
+        safeResponse(500, {
+          error: analysisError.message === 'TIMEOUT' 
+            ? 'Analysis timed out'
+            : 'Failed to analyze URL',
+          errorCode: analysisError.message || 'ANALYSIS_ERROR',
+          actionable: 'Please try again'
         });
       }
     }
     
-  } catch (error) {
-    console.error('[POST /api/analyze-url] Outer error:', error);
-    console.error('[POST /api/analyze-url] Stack:', error.stack);
-    
-    if (!responseSent && !res.headersSent) {
-      sendResponse(500, {
+  } catch (outerError) {
+    console.error('[POST /api/analyze-url] Outer error:', outerError);
+    if (!responded && !res.headersSent) {
+      safeResponse(500, {
         error: 'An unexpected error occurred',
-        errorCode: error.message || 'UNKNOWN_ERROR',
+        errorCode: 'UNKNOWN_ERROR',
         actionable: 'Please try again later'
       });
     }
@@ -105,7 +109,7 @@ app.post('/api/analyze-url', async (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Express error:', err);
+  console.error('Express error middleware:', err);
   if (!res.headersSent) {
     res.status(500).json({
       error: 'Internal server error',
@@ -116,7 +120,9 @@ app.use((err, req, res, next) => {
 
 // 404 handler for API routes
 app.use('/api', (req, res) => {
-  res.status(404).json({ error: 'API endpoint not found' });
+  if (!res.headersSent) {
+    res.status(404).json({ error: 'API endpoint not found' });
+  }
 });
 
 export default app;
