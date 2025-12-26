@@ -5,9 +5,23 @@ import MatrixRain from './MatrixRain';
 interface HomePageProps {
   onFileUpload: (file: File) => void;
   onShowSettings?: () => void;
+  onUrlScan?: (url: string) => void;
+  scanError?: string | null;
+  isAnalyzing?: boolean;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ onFileUpload, onShowSettings }) => {
+// Removed duplicate declaration
+const HomePage: React.FC<HomePageProps> = ({ onFileUpload, onShowSettings, onUrlScan, scanError, isAnalyzing }) => {
+  const [url, setUrl] = useState('');
+  const [urlError, setUrlError] = useState('');
+  const handleUrlScan = async () => {
+    setUrlError('');
+    if (!url.trim() || !/^https?:\/\//.test(url.trim())) {
+      setUrlError('Please enter a valid http(s) URL.');
+      return;
+    }
+    if (onUrlScan) await onUrlScan(url.trim());
+  };
   const [dragActive, setDragActive] = useState(false);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -92,8 +106,40 @@ const HomePage: React.FC<HomePageProps> = ({ onFileUpload, onShowSettings }) => 
           </div>
         </div>
 
-        {/* Upload Section */}
+        {/* Upload/URL Scan Section */}
         <div className="max-w-2xl mx-auto slide-up">
+          {/* URL Scan */}
+          <div className="mb-8 p-8 bg-black bg-opacity-80 rounded-xl border border-green-500 text-center">
+            <h2 className="text-2xl font-bold terminal-text mb-4 font-mono">[SCAN WEB URL]</h2>
+            <input
+              type="text"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="Enter https://... or http://...onion"
+              className="px-4 py-2 rounded bg-black border border-green-500 text-green-400 font-mono w-2/3 mb-2"
+              disabled={isAnalyzing}
+            />
+            <button
+              className="hacker-button px-6 py-2 rounded ml-4"
+              onClick={handleUrlScan}
+              disabled={isAnalyzing}
+            >{isAnalyzing ? 'Scanning...' : 'Scan URL'}</button>
+            {urlError && <div className="text-red-400 mt-2 font-mono">{urlError}</div>}
+            {scanError && (
+              <div className="text-red-400 mt-2 font-mono p-3 bg-red-900 bg-opacity-30 border border-red-500 rounded">
+                <div className="font-bold mb-1">Error:</div>
+                <div className="text-sm">{scanError}</div>
+                {scanError.includes('Tor') && (
+                  <div className="text-xs mt-2 text-yellow-400">
+                    💡 Tip: Make sure Tor Browser is running or Tor daemon is active on port 9050/9150
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="text-green-500 text-xs mt-2 font-mono">
+              Supports both surface web and dark web (.onion) URLs. No data is stored.
+            </div>
+          </div>
           <div
             className={`terminal-border p-12 rounded-xl text-center transition-all duration-500 ${
               dragActive ? 'terminal-glow' : ''

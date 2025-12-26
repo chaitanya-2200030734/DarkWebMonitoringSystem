@@ -21,4 +21,7 @@ export interface AnalysisResult {
   }>;
   insights: string[];
   analyzedAt: string;
+  intent?: string;
+  threats?: any[];
+  raw?: any;
 }

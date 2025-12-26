@@ -1,22 +1,34 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "threatdetector2",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Dark Web Monitoring & Threat Analysis Dashboard",
   "type": "module",
+  "main": "server.js",
   "scripts": {
     "dev": "vite",
+    "server": "node server.js",
     "build": "vite build",
+    "build:prod": "vite build --mode production",
+    "start": "NODE_ENV=production node server.js",
+    "start:prod": "node server.js",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clean": "rm -rf dist node_modules/.vite"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
     "@vercel/analytics": "^1.5.0",
     "axios": "^1.12.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "jsdom": "^27.0.0",
     "lucide-react": "^0.344.0",
+    "node-fetch": "^3.3.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^3.2.0"
+    "recharts": "^3.2.0",
+    "socks-proxy-agent": "^8.0.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
@@ -30,6 +42,7 @@
     "globals": "^15.9.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
+    "terser": "^5.44.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
     "vite": "^5.4.2"

@@ -20,6 +20,13 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ result, isAnalyzing, onReset, onShowSettings, layout }) => {
+  // Use backend's intent and threats fields for display
+  const isSafeOrLowRisk = result && (
+    result.intent === 'educational' ||
+    result.intent === 'safe' ||
+    (Array.isArray(result.threats) && result.threats.length === 0) ||
+    result.totalThreats === 0
+  );
   // New state for advanced search/filter
   const [search, setSearch] = React.useState('');
   const [filterType, setFilterType] = React.useState('all');
@@ -82,6 +89,54 @@ const Dashboard: React.FC<DashboardProps> = ({ result, isAnalyzing, onReset, onS
 
   if (!result) {
     return null;
+  }
+
+  // If safe/educational, show a clear status and suppress threat indicators
+  if (isSafeOrLowRisk) {
+    return (
+      <div className="min-h-screen hacker-bg hacker-grid py-8 relative">
+        <MatrixRain />
+        <div className="container mx-auto px-6">
+          <div className="flex items-center justify-between mb-8 slide-up relative z-10">
+            <div className="flex items-center">
+              <button
+                onClick={onReset}
+                className="mr-4 p-2 text-green-400 hover:text-green-300 transition-colors terminal-border rounded"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <div>
+                <div className="flex items-center mb-2">
+                  <Terminal className="w-8 h-8 text-green-500 mr-3 animate-pulse" />
+                  <h1 className="text-3xl font-bold terminal-text font-mono">[THREAT ANALYSIS DASHBOARD]</h1>
+                </div>
+                <p className="text-green-400 font-mono">TARGET: {result.filename}</p>
+                <div className="flex items-center mt-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                  <span className="text-green-500 text-sm font-mono">ANALYSIS COMPLETE</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <ExportControls result={result} />
+              {onShowSettings && (
+                <button className="hacker-button px-4 py-2 rounded" onClick={onShowSettings}>
+                  User Settings
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="bg-black bg-opacity-80 rounded-xl p-8 border border-green-500 shadow-lg text-center mt-8">
+            <h2 className="text-3xl font-bold text-green-400 mb-4 font-mono">SAFE / LOW RISK SITE</h2>
+            <p className="text-green-300 font-mono text-lg mb-4">No threats detected. This site is recognized as reputable, safe, or educational.</p>
+            <p className="text-green-400 font-mono">Intent: <span className="font-bold">{result.intent ? result.intent.charAt(0).toUpperCase() + result.intent.slice(1) : 'Unknown'}</span></p>
+            {Array.isArray(result.threats) && result.threats.length === 0 && (
+              <p className="text-green-400 font-mono mt-4">No threats detected.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

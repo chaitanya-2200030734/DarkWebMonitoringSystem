@@ -2,12 +2,17 @@ import React, { useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import HomePage from './components/HomePage';
 import Dashboard from './components/Dashboard';
+import UrlScanResults from './components/UrlScanResults';
+import UrlScanPhaseIndicator from './components/UrlScanPhaseIndicator';
 import { AnalysisResult } from './types/analysis';
 import { analyzeThreatIntelligence } from './services/threatIntelligence';
 
 function App() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [urlScanResult, setUrlScanResult] = useState<any | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [scanPhase, setScanPhase] = useState<'crawling' | 'analyzing' | 'intelligence' | 'complete'>('complete');
   const [showSettings, setShowSettings] = useState(false);
   const [userPrefs, setUserPrefs] = useState(() => {
     const saved = localStorage.getItem('userPrefs');
@@ -210,10 +215,58 @@ function App() {
 
   const resetAnalysis = () => {
     setAnalysisResult(null);
+    setUrlScanResult(null);
     setIsAnalyzing(false);
+    setScanPhase('complete');
     setUploadedFile(null);
     setFileContent('');
     setShowAnalysis(false);
+  };
+
+  // Handler for scanning a URL (new secure endpoint)
+  const handleUrlScan = async (url: string) => {
+    setIsAnalyzing(true);
+    setScanError(null);
+    setScanPhase('crawling');
+    setUrlScanResult(null);
+    
+    try {
+      // Use environment variable in production, localhost in development
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 
+        (import.meta.env.DEV ? 'http://localhost:3000' : '');
+      const apiUrl = `${apiBaseUrl}/api/analyze-url`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze URL');
+      }
+      
+      const data = await response.json();
+      if (!data) throw new Error('No data returned');
+      
+      // Simulate phase progression for UI feedback
+      setScanPhase('crawling');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setScanPhase('analyzing');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setScanPhase('intelligence');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setScanPhase('complete');
+      
+      setUrlScanResult(data);
+      
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : 'Unknown error');
+      setUrlScanResult(null);
+      setScanPhase('complete');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   return (
@@ -261,10 +314,30 @@ function App() {
           </div>
         </div>
       )}
-      {/* Main UI: File summary and analysis flow */}
-      {!uploadedFile ? (
-        <HomePage onFileUpload={handleFileUpload} onShowSettings={() => setShowSettings(true)} />
-      ) : !showAnalysis ? (
+      {/* Main UI: URL Scan Results, File summary and analysis flow */}
+      {isAnalyzing && scanPhase !== 'complete' ? (
+        <div className="min-h-screen hacker-bg hacker-grid py-8 relative">
+          <div className="container mx-auto px-6 relative z-10">
+            <div className="max-w-2xl mx-auto">
+              <UrlScanPhaseIndicator currentPhase={scanPhase} />
+            </div>
+          </div>
+        </div>
+      ) : urlScanResult ? (
+        <UrlScanResults
+          result={urlScanResult}
+          onReset={resetAnalysis}
+          onShowSettings={() => setShowSettings(true)}
+        />
+      ) : showAnalysis && analysisResult ? (
+        <Dashboard 
+          result={analysisResult}
+          isAnalyzing={isAnalyzing}
+          onReset={resetAnalysis}
+          onShowSettings={() => setShowSettings(true)}
+          layout={userPrefs.layout}
+        />
+      ) : uploadedFile ? (
         <div className="container mx-auto px-6 py-12">
           <div className="max-w-2xl mx-auto bg-black bg-opacity-80 rounded-xl p-8 border border-green-500 shadow-lg">
             <h2 className="text-2xl font-bold text-green-400 mb-4 font-mono">[FILE SUMMARY]</h2>
@@ -305,13 +378,7 @@ function App() {
           </div>
         </div>
       ) : (
-        <Dashboard 
-          result={analysisResult}
-          isAnalyzing={isAnalyzing}
-          onReset={resetAnalysis}
-          onShowSettings={() => setShowSettings(true)}
-          layout={userPrefs.layout}
-        />
+        <HomePage onFileUpload={handleFileUpload} onShowSettings={() => setShowSettings(true)} onUrlScan={handleUrlScan} scanError={scanError} isAnalyzing={isAnalyzing} />
       )}
     </div>
   );
