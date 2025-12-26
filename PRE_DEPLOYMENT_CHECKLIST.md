@@ -15,7 +15,14 @@
 npm run build
 
 # Test the server locally
+# Windows (PowerShell):
+$env:NODE_ENV="production"; node server.js
+
+# Linux/Mac:
 NODE_ENV=production node server.js
+
+# Or use npm script (works on all platforms):
+npm start
 ```
 
 ### 3. **Check Git Status**
