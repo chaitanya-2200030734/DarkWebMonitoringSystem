@@ -231,9 +231,11 @@ function App() {
     setUrlScanResult(null);
     
     try {
-      // Use environment variable in production, localhost in development
+      // Use environment variable if set, otherwise use relative path (same origin)
+      // For Railway: Set VITE_API_URL to your Railway public URL (e.g., https://your-app.railway.app)
+      // For same-domain deployment: Leave empty to use relative paths
       const apiBaseUrl = import.meta.env.VITE_API_URL || 
-        (import.meta.env.DEV ? 'http://localhost:3000' : '');
+        (import.meta.env.DEV ? 'http://localhost:3000' : window.location.origin);
       const apiUrl = `${apiBaseUrl}/api/analyze-url`;
       const response = await fetch(apiUrl, {
         method: 'POST',
