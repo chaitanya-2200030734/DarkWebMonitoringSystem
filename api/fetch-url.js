@@ -204,9 +204,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler for API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ error: 'API endpoint not found' });
+// 404 handler for unmatched routes (Express 5 compatible - no wildcard)
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({ error: 'API endpoint not found' });
+  } else {
+    // For non-API routes, let server.js handle it (for SPA routing in production)
+    res.status(404).json({ error: 'Route not found' });
+  }
 });
 
 export default app;
