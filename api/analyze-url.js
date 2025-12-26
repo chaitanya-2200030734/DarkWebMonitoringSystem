@@ -148,7 +148,24 @@ export async function analyzeUrlEndpoint(req, res) {
     phaseTimings.analysisStart = Date.now();
     
     // detectWebThreat internally fetches HTML and performs analysis
-    const threatAnalysis = await detectWebThreat(url);
+    let threatAnalysis;
+    try {
+      threatAnalysis = await detectWebThreat(url);
+    } catch (detectError) {
+      console.error('[analyzeUrlEndpoint] Error in detectWebThreat:', detectError);
+      const errorInfo = getErrorMessage(detectError);
+      return res.status(500).json({
+        error: errorInfo.userMessage || 'Failed to analyze URL',
+        errorCode: detectError.message || 'ANALYSIS_ERROR',
+        isOnion: isOnionUrl(url),
+        actionable: errorInfo.actionable || 'Please try again later',
+        phaseTimings: {
+          crawlDuration: null,
+          analysisDuration: Date.now() - phaseTimings.analysisStart,
+          status: 'failed'
+        }
+      });
+    }
     
     if (threatAnalysis.error) {
       // Get user-friendly error message

@@ -201,7 +201,16 @@ app.post('/api/analyze-url', async (req, res, next) => {
     await analyzeUrlEndpoint(req, res);
   } catch (error) {
     console.error('[fetch-url] Unhandled error in analyzeUrlEndpoint:', error);
-    next(error);
+    console.error('[fetch-url] Error stack:', error.stack);
+    
+    // Make sure response hasn't been sent yet
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'An unexpected error occurred while analyzing the URL',
+        errorCode: error.message || 'UNKNOWN_ERROR',
+        actionable: 'Please try again later or contact support if the issue persists'
+      });
+    }
   }
 });
 
