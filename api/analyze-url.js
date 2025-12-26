@@ -9,12 +9,18 @@ import {
 } from './advanced-threat-detect.js';
 
 export async function analyzeUrlEndpoint(req, res) {
+  const requestId = res.getHeader('X-Request-ID') || 'unknown';
+  console.log(`[analyzeUrlEndpoint:${requestId}] Starting analysis`);
+  
   try {
     const { url } = req.body;
     
     if (!url || typeof url !== 'string' || !/^https?:\/\//.test(url)) {
+      console.log(`[analyzeUrlEndpoint:${requestId}] Invalid URL validation`);
       return res.status(400).json({ error: 'Invalid URL' });
     }
+    
+    console.log(`[analyzeUrlEndpoint:${requestId}] Valid URL: ${url}`);
 
     const phaseTimings = {
       crawlStart: Date.now(),
@@ -29,13 +35,15 @@ export async function analyzeUrlEndpoint(req, res) {
     try {
       // PHASE 1: Crawling + Analysis (detectWebThreat handles both internally)
       phaseTimings.analysisStart = Date.now();
+      console.log(`[analyzeUrlEndpoint:${requestId}] Calling detectWebThreat`);
       
       // detectWebThreat internally fetches HTML and performs analysis
       let threatAnalysis;
       try {
         threatAnalysis = await detectWebThreat(url);
+        console.log(`[analyzeUrlEndpoint:${requestId}] detectWebThreat completed`);
       } catch (detectError) {
-        console.error('[analyzeUrlEndpoint] Error in detectWebThreat:', detectError);
+        console.error(`[analyzeUrlEndpoint:${requestId}] Error in detectWebThreat:`, detectError);
         const errorInfo = getErrorMessage(detectError);
         return res.status(500).json({
           error: errorInfo.userMessage || 'Failed to analyze URL',
@@ -51,6 +59,7 @@ export async function analyzeUrlEndpoint(req, res) {
       }
       
       if (threatAnalysis.error) {
+        console.log(`[analyzeUrlEndpoint:${requestId}] Threat analysis returned error: ${threatAnalysis.error}`);
         // Get user-friendly error message
         const errorInfo = getErrorMessage({ message: threatAnalysis.error });
         
@@ -88,6 +97,8 @@ export async function analyzeUrlEndpoint(req, res) {
         });
       }
 
+      console.log(`[analyzeUrlEndpoint:${requestId}] Processing threat analysis results`);
+      
       // Estimate phase timings (detectWebThreat combines crawl+analysis+intelligence)
       // Split roughly: 30% crawl, 50% analysis, 20% intelligence correlation
       const totalAnalysisTime = Date.now() - phaseTimings.analysisStart;
@@ -149,6 +160,7 @@ export async function analyzeUrlEndpoint(req, res) {
       };
 
       // Return sanitized response (NO raw HTML, DOM, or sensitive data)
+      console.log(`[analyzeUrlEndpoint:${requestId}] Sending success response`);
       return res.json({
         url,
         safetyVerdict,
@@ -175,14 +187,17 @@ export async function analyzeUrlEndpoint(req, res) {
       });
 
     } catch (error) {
-      console.error('[analyzeUrlEndpoint] Inner error:', error);
-      console.error('[analyzeUrlEndpoint] Error stack:', error.stack);
+      const requestId = res.getHeader('X-Request-ID') || 'unknown';
+      console.error(`[analyzeUrlEndpoint:${requestId}] Inner error:`, error);
+      console.error(`[analyzeUrlEndpoint:${requestId}] Error stack:`, error.stack);
       
       // Ensure response is sent
       if (res.headersSent) {
+        console.log(`[analyzeUrlEndpoint:${requestId}] Response already sent, skipping`);
         return; // Response already sent, don't try again
       }
       
+      console.log(`[analyzeUrlEndpoint:${requestId}] Sending error response`);
       const errorInfo = getErrorMessage(error);
       const isOnion = isOnionUrl(req.body?.url || '');
       
@@ -205,13 +220,19 @@ export async function analyzeUrlEndpoint(req, res) {
     }
   } catch (outerError) {
     // Catch any errors from the outer try block
-    console.error('[analyzeUrlEndpoint] Outer catch error:', outerError);
+    const requestId = res.getHeader('X-Request-ID') || 'unknown';
+    console.error(`[analyzeUrlEndpoint:${requestId}] Outer catch error:`, outerError);
+    console.error(`[analyzeUrlEndpoint:${requestId}] Outer error stack:`, outerError.stack);
+    
     if (!res.headersSent) {
+      console.log(`[analyzeUrlEndpoint:${requestId}] Sending outer error response`);
       return res.status(500).json({
         error: 'An unexpected error occurred',
         errorCode: 'INTERNAL_ERROR',
         actionable: 'Please try again later'
       });
+    } else {
+      console.log(`[analyzeUrlEndpoint:${requestId}] Response already sent, cannot send outer error`);
     }
   }
 }
