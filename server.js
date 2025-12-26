@@ -18,15 +18,20 @@ if (NODE_ENV === 'production') {
     lastModified: true
   }));
   
-  // Serve index.html for all routes (SPA routing) - must be last
-  // Express 5 compatible: use catch-all middleware instead of '*'
+  // SPA routing: catch-all middleware for non-API routes
+  // Express 5 compatible - NO wildcard '*' pattern
   app.use((req, res, next) => {
-    // Don't serve index.html for API routes
+    // Skip API routes
     if (req.path.startsWith('/api/')) {
       return next();
     }
     // Serve index.html for all other routes (SPA routing)
-    res.sendFile(join(__dirname, 'dist', 'index.html'));
+    res.sendFile(join(__dirname, 'dist', 'index.html'), (err) => {
+      if (err) {
+        console.error('Error sending index.html:', err);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
   });
 }
 
